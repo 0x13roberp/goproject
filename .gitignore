@@ -7,6 +7,10 @@
 *.dll
 *.so
 *.dylib
+steps.txt
+.env
+/database
+/data
 
 # Test binary, built with `go test -c`
 *.test
