@@ -5,6 +5,7 @@ import (
 	"paywatcher/model"
 
 	"github.com/gofiber/fiber/v3"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -33,23 +34,15 @@ func GetUserById(c fiber.Ctx, db *gorm.DB, id string) error {
 	// instancia de nuestra estructura user creada en models
 	var user model.User
 	// guardar en la variable user el id
-	result := db.Find(&user, id)
+	result := db.First(&user, id)
 
 	// si el id no existe. cuando creamos la estructura por defecto se pone a 0
 	if result.Error != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "Error", "message": "User not found!"})
 	}
 
-	// usuario pero sin la password. ya que lo vamos a retornar como json
-	userReturn := model.User{
-		ID:       user.ID,
-		Name:     user.Name,
-		Email:    user.Email,
-		UserName: user.UserName,
-	}
-
 	// si el id si existe
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "Success", "data": userReturn, "message": "User found!"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "Success", "data": user, "message": "User found!"})
 }
 
 // traer todos los usuarios
@@ -61,7 +54,112 @@ func GetAllUsers(c fiber.Ctx, db *gorm.DB) error {
 }
 
 // POST /user
+func CreateUser(c fiber.Ctx) error {
+	db := database.DB
+	// crear un nuevo modelo de user
+	user := new(model.User)
+
+	// comprobar que estan viniendo todos los campos. BodyParser deprecated, usar bind body pasandole el puntero del user
+	if err := c.Bind().Body(&user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "Error", "message": "Body JSON incompleted!"})
+	}
+
+	// cifrar la pass usando la funcion creada abajo
+	password, err := hashPassword(user.Password)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status": "Error", "message": "Error while hashing password!"})
+	}
+	// si no hubo ningun error cifrandola, le asignamos la pass cifrada al user
+	user.Password = password
+
+	// guardar la informacion del usuario en la db
+	if err := db.Create(&user).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "Error", "message": "Error while saving data to the database!"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status": "Success", "data": user, "message": "User created!"})
+}
+
+// funcion para cifrar la pass
+func hashPassword(password string) (string, error) {
+	// bcrypt sirve para hashear
+	CryptedPass, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	// la funcion retorna byte y un error. entonces casteamos el byte a string
+	return string(CryptedPass), err
+}
 
 // PUT /user/:id
+func UpdateUser(c fiber.Ctx) error {
+	db := database.DB
+	id := c.Params("id")
+	var user model.User
+
+	type updateUser struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		UserName string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	// uu = user update
+	var uu updateUser
+
+	if err := c.Bind().Body(&uu); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "Error", "message": "Error while updating user!"})
+	}
+
+	// para actualizar la pass del user, tambien tenemos que cifrarla
+	password, err := hashPassword(uu.Password)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status": "Error", "message": "Error while hashing password!"})
+	}
+
+	// encontrar el user
+	result := db.First(&user, id)
+
+	// error al actualizar el user
+	if result.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "Error", "message": "User not found!"})
+	}
+
+	// cambiar los datos del usuario con el de updated user
+	user.Name = uu.Name
+	user.Email = uu.Email
+	user.UserName = uu.UserName
+	user.Password = password // pass actualizada
+
+	// guardar el nuevo user actualizado
+	if err := db.Save(&user).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status": "Error", "message": "Error while updating user!"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "Success", "data": user, "message": "User updated!"})
+}
 
 // DELETE /user/:id
+func DeleteUser(c fiber.Ctx) error {
+	db := database.DB
+	id := c.Params("id")
+	var user model.User
+
+	// comprobar que existe el user
+	result := db.First(&user, id)
+
+	if result.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "Error", "message": "User not found!"})
+	}
+
+	// eliminar el user de la db
+	result = db.Delete(&user)
+
+	// si ocurre un error al eliminar el user
+	if result.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "Error", "message": "Error while deleting user!"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "Success", "data": user, "message": "User deleted!"})
+}
