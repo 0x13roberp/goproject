@@ -2,6 +2,7 @@ package model
 
 type Payment struct {
 	ID          uint    `json:"id" gorm:"primaryKey"`
+	UserID      uint    `json:"user_id"`
 	Name        string  `json:"name"`
 	CategoryID  uint    `json:"category_id"`
 	NetAmount   float64 `json:"net_amount"`
