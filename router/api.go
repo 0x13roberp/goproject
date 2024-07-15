@@ -10,6 +10,10 @@ import (
 func Init(app *fiber.App) {
 	// group para crear grupos de rutas que comparten algo en comun y middlewares.
 	api := app.Group("/api")
+
+	auth := api.Group("/auth")
+	auth.Post("/login", controller.Login)
+
 	user := api.Group("/user")
 
 	user.Get("/", controller.GetUser)

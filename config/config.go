@@ -14,6 +14,8 @@ type ConfigDataBase struct {
 	Name string
 }
 
+var SecretJWTKey string
+
 func GetConfigDataBase() ConfigDataBase {
 	var config ConfigDataBase
 	err := godotenv.Load(".env")
@@ -26,6 +28,7 @@ func GetConfigDataBase() ConfigDataBase {
 	config.User = os.Getenv("DB_USER")
 	config.Pass = os.Getenv("DB_PASS")
 	config.Name = os.Getenv("DB_NAME")
+	SecretJWTKey = os.Getenv("JWT_SECRET")
 
 	return config
 }
