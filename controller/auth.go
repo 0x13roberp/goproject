@@ -6,7 +6,7 @@ import (
 	"paywatcher/model"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -19,47 +19,70 @@ func hashPassword(password string) (string, error) {
 	return string(CryptedPass), err
 }
 
-func Login(c fiber.Ctx) error {
+// funcion para comprobar si existe un usuario
+func ExistingUser(identity string) (model.User, error) {
+	// Traer la base de datos para comparar los datos del user guardado con el introducido al hacer log in
+	var DB = database.DB
+	var user model.User
+
+	// En el caso de que no coincida el nombre de usuario con el que esta en la base de datos. tambien podriamos usar el email
+	if err := DB.Where("user_name = ?", identity).First(&user); err.Error != nil {
+		return user, err.Error
+	}
+	return user, nil
+}
+
+// Funcion para checkear si la passwords son iguales
+func CheckPassword(hash string, password string) bool {
+	// Ahora checkear la si las passwords son iguales. tambien las encriptamos en el proceso
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// Funcion para crear el token de inicio de sesion ya hasheado
+func CreateToken(user model.User) *jwt.Token {
+	claims := jwt.MapClaims{
+		"name":  user.Name,
+		"admin": false,
+		"exp":   time.Now().Add(time.Hour * 72).Unix()}
+
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+}
+
+func Login(c *fiber.Ctx) error {
 
 	// Estructura requerida para hacer log in
 	var loginInput struct {
 		Identity string `json:"identity"`
 		Password string `json:"password"`
 	}
+
+	var user model.User
+	var err error
+
 	// Si ocurre un error al hacer log in returnar un bad request
-	if err := c.Bind().Body(&loginInput); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "Error",
+	if err = c.BodyParser(&loginInput); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error",
 			"message": "Invalid Request!"})
 	}
 
-	// Usamos la estructura de user para guardar los datos del user haciendo log in y despues compararlos con la de la base de datos
-	var user model.User
-
-	// Traer la base de datos para comparar los datos del user guardado con el introducido al hacer log in
-	var DB = database.DB
-
-	// En el caso de que no coincida el nombre de usuario con el que esta en la base de datos. tambien podriamos usar el email
-	if err := DB.Where("username = ? ", loginInput.Identity).First(&user); err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "Error",
+	user, err = ExistingUser(loginInput.Identity)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error",
 			"message": "Invalid Credentials!"})
 	}
 
-	// Ahora checkear la si las passwords son iguales. tambien las encriptamos en el proceso
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginInput.Password))
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "Error", "message": "Internal error!"})
+	if !CheckPassword(user.Password, loginInput.Password) {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error",
+			"message": "Invalid Credentials!"})
 	}
 
-	// Crear el claims para generar el token de inicio de sesion
-	claims := jwt.MapClaims{"name": user.Name, "admin": false, "exp": time.Now().Add(time.Hour * 72).Unix()}
-
-	// Token de inicio de sesion con su hash
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := CreateToken(user)
 
 	// Genera el token ya cifrado
 	t, err := token.SignedString([]byte(config.SecretJWTKey))
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "Error",
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error",
 			"message": "Internal error!"})
 	}
 

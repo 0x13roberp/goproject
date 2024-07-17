@@ -2,8 +2,9 @@ package router
 
 import (
 	"paywatcher/controller"
+	"paywatcher/middleware"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 )
 
 // iniciar las rutas. toma el app de main.go
@@ -15,10 +16,9 @@ func Init(app *fiber.App) {
 	auth.Post("/login", controller.Login)
 
 	user := api.Group("/user")
-
-	user.Get("/", controller.GetUser)
-	user.Get("/:id", controller.GetUser)
 	user.Post("/", controller.CreateUser)
-	user.Put("/:id", controller.UpdateUser)
-	user.Delete("/:id", controller.DeleteUser)
+	user.Get("/", middleware.ProtectedHandler(), controller.GetUser)
+	user.Get("/:id", middleware.ProtectedHandler(), controller.GetUser)
+	user.Put("/:id", middleware.ProtectedHandler(), controller.UpdateUser)
+	user.Delete("/:id", middleware.ProtectedHandler(), controller.DeleteUser)
 }

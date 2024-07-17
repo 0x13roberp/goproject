@@ -4,7 +4,7 @@ import (
 	"paywatcher/database"
 	"paywatcher/model"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
@@ -12,7 +12,7 @@ import (
 
 // GET /user/:id
 // traer usuario sin id
-func GetUser(c fiber.Ctx) error {
+func GetUser(c *fiber.Ctx) error {
 	// traer la db
 	db := database.DB
 	// guardar el parametro id de fiber
@@ -20,7 +20,7 @@ func GetUser(c fiber.Ctx) error {
 
 	// si el user no tiene id vacio
 	if id != "" {
-		return GetUserById(c, db, id)
+		return GetUserByID(c, db, id)
 	}
 
 	// si el user tiene id vacio
@@ -29,7 +29,7 @@ func GetUser(c fiber.Ctx) error {
 }
 
 // traer usuario por id
-func GetUserById(c fiber.Ctx, db *gorm.DB, id string) error {
+func GetUserByID(c *fiber.Ctx, db *gorm.DB, id string) error {
 	// instancia de nuestra estructura user creada en models
 	var user model.User
 	// guardar en la variable user el id
@@ -45,7 +45,7 @@ func GetUserById(c fiber.Ctx, db *gorm.DB, id string) error {
 }
 
 // traer todos los usuarios
-func GetAllUsers(c fiber.Ctx, db *gorm.DB) error {
+func GetAllUsers(c *fiber.Ctx, db *gorm.DB) error {
 	var users []model.User
 	// guardar todos los datos de la db en el array
 	db.Find(&users)
@@ -53,13 +53,13 @@ func GetAllUsers(c fiber.Ctx, db *gorm.DB) error {
 }
 
 // POST /user
-func CreateUser(c fiber.Ctx) error {
+func CreateUser(c *fiber.Ctx) error {
 	db := database.DB
 	// crear un nuevo modelo de user
 	user := new(model.User)
 
 	// comprobar que estan viniendo todos los campos. BodyParser deprecated, usar bind body pasandole el puntero del user
-	if err := c.Bind().Body(&user); err != nil {
+	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "Error", "message": "Body JSON incompleted!"})
 	}
 
@@ -82,7 +82,7 @@ func CreateUser(c fiber.Ctx) error {
 }
 
 // PUT /user/:id
-func UpdateUser(c fiber.Ctx) error {
+func UpdateUser(c *fiber.Ctx) error {
 	db := database.DB
 	id := c.Params("id")
 	var user model.User
@@ -97,7 +97,7 @@ func UpdateUser(c fiber.Ctx) error {
 	// uu = user update
 	var uu updateUser
 
-	if err := c.Bind().Body(&uu); err != nil {
+	if err := c.BodyParser(&uu); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "Error", "message": "Error while updating user!"})
 	}
 
@@ -132,7 +132,7 @@ func UpdateUser(c fiber.Ctx) error {
 }
 
 // DELETE /user/:id
-func DeleteUser(c fiber.Ctx) error {
+func DeleteUser(c *fiber.Ctx) error {
 	db := database.DB
 	id := c.Params("id")
 	var user model.User

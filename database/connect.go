@@ -2,7 +2,7 @@ package database
 
 import (
 	"fmt"
-	config "paywatcher/config"
+	"paywatcher/config"
 	"paywatcher/model"
 
 	"gorm.io/driver/mysql"
@@ -16,14 +16,13 @@ var DB *gorm.DB
 func Connect() {
 	var err error
 	//variable para conectar los datos con el dsn
-	configDB := config.GetConfigDataBase()
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		configDB.User,
-		configDB.Pass,
-		configDB.Host,
-		configDB.Port,
-		configDB.Name)
+		config.DataBase.User,
+		config.DataBase.Pass,
+		config.DataBase.Host,
+		config.DataBase.Port,
+		config.DataBase.Name)
 
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
