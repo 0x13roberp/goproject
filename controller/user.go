@@ -20,16 +20,16 @@ func GetUser(c *fiber.Ctx) error {
 
 	// si el user no tiene id vacio
 	if id != "" {
-		return GetUserByID(c, db, id)
+		return getUserByID(c, db, id)
 	}
 
 	// si el user tiene id vacio
-	return GetAllUsers(c, db)
+	return getAllUsers(c, db)
 
 }
 
 // traer usuario por id
-func GetUserByID(c *fiber.Ctx, db *gorm.DB, id string) error {
+func getUserByID(c *fiber.Ctx, db *gorm.DB, id string) error {
 	// instancia de nuestra estructura user creada en models
 	var user model.User
 	// guardar en la variable user el id
@@ -45,7 +45,7 @@ func GetUserByID(c *fiber.Ctx, db *gorm.DB, id string) error {
 }
 
 // traer todos los usuarios
-func GetAllUsers(c *fiber.Ctx, db *gorm.DB) error {
+func getAllUsers(c *fiber.Ctx, db *gorm.DB) error {
 	var users []model.User
 	// guardar todos los datos de la db en el array
 	db.Find(&users)

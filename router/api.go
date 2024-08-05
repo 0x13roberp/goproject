@@ -21,4 +21,8 @@ func Init(app *fiber.App) {
 	user.Get("/:id", middleware.ProtectedHandler(), controller.GetUser)
 	user.Put("/:id", middleware.ProtectedHandler(), controller.UpdateUser)
 	user.Delete("/:id", middleware.ProtectedHandler(), controller.DeleteUser)
+
+	category := api.Group("category")
+	category.Get("/", middleware.ProtectedHandler(), controller.GetCategories)
+	category.Get("/:id", middleware.ProtectedHandler(), controller.GetCategories)
 }

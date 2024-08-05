@@ -19,6 +19,13 @@ func hashPassword(password string) (string, error) {
 	return string(CryptedPass), err
 }
 
+func getIdUserInToken(c *fiber.Ctx) int {
+	user := c.Locals("user").(*jwt.Token) // obtiene el token de autenticacion del contexto
+	claims := user.Claims.(jwt.MapClaims)
+	id := claims["id"].(float64)
+	return int(id)
+}
+
 // funcion para comprobar si existe un usuario
 func ExistingUser(identity string) (model.User, error) {
 	// Traer la base de datos para comparar los datos del user guardado con el introducido al hacer log in
@@ -43,6 +50,7 @@ func CheckPassword(hash string, password string) bool {
 func CreateToken(user model.User) *jwt.Token {
 	claims := jwt.MapClaims{
 		"name":  user.Name,
+		"id":    user.ID,
 		"admin": false,
 		"exp":   time.Now().Add(time.Hour * 72).Unix()}
 
